@@ -68,53 +68,21 @@ from itertools import cycle
 # df_wine.head()
 
 # df_canc.head()
+class Caibal():
+  def preProcess(self, X):
+    # Standardize data
+    # Normalizing the Data
+    scaler = StandardScaler()
+    # scaler = MinMaxScaler()
+    return normalize(scaler.fit_transform(X))
 
-def preProcess(X):
-  # Standardize data
-  # Normalizing the Data
-  scaler = StandardScaler()
-  # scaler = MinMaxScaler()
-  return normalize(scaler.fit_transform(X))
+  def PCARedution(self, X):
+    # Reducing the dimensions of the data 
+    pca = PCA(n_components = 3) 
+    X1 = pca.fit_transform(X)
+    return X1
 
-def PCARedution(X):
-  # Reducing the dimensions of the data 
-  pca = PCA(n_components = 3) 
-  X1 = pca.fit_transform(X)
-  return X1
-
-def Elbow_kneeLocator(X):
-  clusters = []
-  best_n_clusters = 0
-  best_sil = 0
-  for i in range(1, 11):
-      km = KMeans(n_clusters=i).fit(X)
-      clusters.append(km.inertia_)
-      labels = km.labels_
-      if len(set(labels)) <= 1: continue
-      sil = silhouette_score(X, labels)
-      if sil > best_sil:
-        best_sil = sil
-        best_n_clusters = i
-      
-  fig, ax = plt.subplots()
-  sns.lineplot(x=list(range(1, 11)), y=clusters, ax=ax)
-  ax.set_title('Searching for Elbow')
-  ax.set_xlabel('Clusters')
-  ax.set_ylabel('Inertia')
-
-  plt.show()
-
-  kl = KneeLocator(range(1, 11), 
-                   clusters, 
-                   curve="convex", 
-                   direction="decreasing")
-  print("\nResult finding by Knee Locator function: ")
-  print(kl.elbow)
-  print("\n")
-  return best_n_clusters
-
-def clusteringKmeans(X, n_c):
-  if n_c == 0:
+  def Elbow_kneeLocator(self, X, verbose):
     clusters = []
     best_n_clusters = 0
     best_sil = 0
@@ -123,526 +91,545 @@ def clusteringKmeans(X, n_c):
         clusters.append(km.inertia_)
         labels = km.labels_
         if len(set(labels)) <= 1: continue
-        sil = calinski_harabasz_score(X, labels)
-        # sil = silhouette_score(X, labels)
+        sil = silhouette_score(X, labels)
         if sil > best_sil:
           best_sil = sil
           best_n_clusters = i
-    n_c = best_n_clusters
+        
+    fig, ax = plt.subplots()
+    sns.lineplot(x=list(range(1, 11)), y=clusters, ax=ax)
+    ax.set_title('Searching for Elbow')
+    ax.set_xlabel('Clusters')
+    ax.set_ylabel('Inertia')
 
-  model = KMeans(n_clusters=n_c).fit(X)
+    plt.show()
+
+    kl = KneeLocator(range(1, 11), 
+                    clusters, 
+                    curve="convex", 
+                    direction="decreasing")
+    if verbose:
+      print("\nResult finding by Knee Locator function: ")
+      print(kl.elbow)
+      print("\n")
+    return best_n_clusters
   
-  for cluster in unique(model.labels_):
-    row_ix = where(model.labels_ == cluster)
-    plt.scatter(X[row_ix, 0], X[row_ix, 1], s=200)
+  def clusteringKmeans(self, X, n_c, verbose):
+    if n_c == 0:
+      clusters = []
+      best_n_clusters = 0
+      best_sil = 0
+      for i in range(1, 11):
+          km = KMeans(n_clusters=i).fit(X)
+          clusters.append(km.inertia_)
+          labels = km.labels_
+          if len(set(labels)) <= 1: continue
+          sil = calinski_harabasz_score(X, labels)
+          # sil = silhouette_score(X, labels)
+          if sil > best_sil:
+            best_sil = sil
+            best_n_clusters = i
+      n_c = best_n_clusters
 
-  plt.scatter(model.cluster_centers_[:, 0], model.cluster_centers_[:, 1],
-              marker='*', s=300,
-              c='r', label='centroid')
-  plt.show()
-  return model.labels_, n_c
+    model = KMeans(n_clusters=n_c).fit(X)
+    if verbose:
+      for cluster in unique(model.labels_):
+        row_ix = where(model.labels_ == cluster)
+        plt.scatter(X[row_ix, 0], X[row_ix, 1], s=200)
 
-def clusteringAffinityPropagation(X):
-  pref = [-1,-2,-3,-4,-5,-6,-7,-8,-9,-10]
-  best_pref = 0
-  best_sil = 0
-  for i in pref:
-    model = AffinityPropagation(preference=i, max_iter=500).fit(X)
+      plt.scatter(model.cluster_centers_[:, 0], model.cluster_centers_[:, 1],
+                  marker='*', s=300,
+                  c='r', label='centroid')
+      plt.show()
+    return model.labels_, n_c
+
+  def clusteringAffinityPropagation(self, X, verbose):
+    pref = [-1,-2,-3,-4,-5,-6,-7,-8,-9,-10]
+    best_pref = 0
+    best_sil = 0
+    for i in pref:
+      model = AffinityPropagation(preference=i, max_iter=500).fit(X)
+      cluster_centers_indices = model.cluster_centers_indices_
+      labels = model.labels_
+
+      if len(set(labels)) <= 1 or len(set(labels)) > len(X)-1: continue
+      sil = calinski_harabasz_score(X, labels)
+      # sil = silhouette_score(X, labels, metric='sqeuclidean')
+      if sil > best_sil:
+        best_sil = sil
+        best_pref = i
+
+    model = AffinityPropagation().fit(X)
     cluster_centers_indices = model.cluster_centers_indices_
     labels = model.labels_
 
-    if len(set(labels)) <= 1 or len(set(labels)) > len(X)-1: continue
-    sil = calinski_harabasz_score(X, labels)
-    # sil = silhouette_score(X, labels, metric='sqeuclidean')
-    if sil > best_sil:
-      best_sil = sil
-      best_pref = i
+    n_clusters_ = len(cluster_centers_indices)
+    if verbose:
+      print('Estimated number of clusters: %d' % n_clusters_)
+    
+      colors = cycle('bgrcmykbgrcmykbgrcmykbgrcmyk')
+      for k, col in zip(range(n_clusters_), colors):
+          class_members = labels == k
+          cluster_center = X[cluster_centers_indices[k]]
+          plt.plot(X[class_members, 0], X[class_members, 1], col + '.')
+          plt.plot(cluster_center[0], cluster_center[1], 'o', markerfacecolor=col,
+                  markeredgecolor='k', markersize=14)
+          for x in X[class_members]:
+              plt.plot([cluster_center[0], x[0]], [cluster_center[1], x[1]], col)
 
-  model = AffinityPropagation().fit(X)
-  cluster_centers_indices = model.cluster_centers_indices_
-  labels = model.labels_
+      plt.title('Estimated number of clusters: %d' % n_clusters_)
+      plt.show()
 
-  n_clusters_ = len(cluster_centers_indices)
+    return model.labels_, n_clusters_
 
-  print('Estimated number of clusters: %d' % n_clusters_)
-  
-  colors = cycle('bgrcmykbgrcmykbgrcmykbgrcmyk')
-  for k, col in zip(range(n_clusters_), colors):
-      class_members = labels == k
-      cluster_center = X[cluster_centers_indices[k]]
-      plt.plot(X[class_members, 0], X[class_members, 1], col + '.')
-      plt.plot(cluster_center[0], cluster_center[1], 'o', markerfacecolor=col,
-              markeredgecolor='k', markersize=14)
-      for x in X[class_members]:
-          plt.plot([cluster_center[0], x[0]], [cluster_center[1], x[1]], col)
+  def clusteringAgglomerativeClustering (self, X, n_c, verbose):
+    best_n_cluster = 0
+    best_sil = 0
+    if n_c == 0:
+      for i in range(1, 11):
+        model = AgglomerativeClustering(n_clusters=i).fit(X)
+        labels = model.labels_
 
-  plt.title('Estimated number of clusters: %d' % n_clusters_)
-  plt.show()
+        if len(set(labels)) <= 1: continue
+        sil = calinski_harabasz_score(X, labels)
+        # sil = silhouette_score(X, labels, metric='sqeuclidean')
+        if sil > best_sil:
+          best_sil = sil
+          best_n_cluster = i
 
-  return model.labels_, n_clusters_
-
-def clusteringAgglomerativeClustering (X, n_c):
-  best_n_cluster = 0
-  best_sil = 0
-  if n_c == 0:
-    for i in range(1, 11):
-      model = AgglomerativeClustering(n_clusters=i).fit(X)
+      model = AgglomerativeClustering(n_clusters=best_n_cluster).fit(X)
       labels = model.labels_
+
+      n_clusters_ = model.n_clusters_
+      if verbose:
+        print('Estimated number of clusters: %d' % n_clusters_)
+    else:
+      model = AgglomerativeClustering(n_clusters=n_c).fit(X)
+      labels = model.labels_
+
+      n_clusters_ = model.n_clusters_
+    if verbose:
+      colors = cycle('bgrcmykbgrcmykbgrcmykbgrcmyk')
+      for k, col in zip(range(n_clusters_), colors):
+          class_members = labels == k
+          plt.scatter(X[class_members, 0], X[class_members, 1], s=200, c=col)
+          # plt.plot(X[class_members, 0], X[class_members, 1], col + '.')
+
+      plt.title('Estimated number of clusters: %d' % n_clusters_)
+      plt.show()
+
+    return model.labels_, n_clusters_
+
+  def clusteringMeanShift(self, X, verbose):
+    best_band = 0
+    best_sil = 0
+    quant = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    for i in quant:
+      bandwidth = estimate_bandwidth(X, quantile=i) # Manually set the quantile to get num clusters = 3
+
+      model = MeanShift(bandwidth=bandwidth).fit(X)
+      labels = model.labels_
+      cluster_centers = model.cluster_centers_
+
+      labels_unique = np.unique(labels)
+      n_clusters_ = len(labels_unique)
 
       if len(set(labels)) <= 1: continue
       sil = calinski_harabasz_score(X, labels)
       # sil = silhouette_score(X, labels, metric='sqeuclidean')
       if sil > best_sil:
         best_sil = sil
-        best_n_cluster = i
+        best_band = bandwidth
 
-    model = AgglomerativeClustering(n_clusters=best_n_cluster).fit(X)
-    labels = model.labels_
-
-    n_clusters_ = model.n_clusters_
-
-    print('Estimated number of clusters: %d' % n_clusters_)
-  else:
-    model = AgglomerativeClustering(n_clusters=n_c).fit(X)
-    labels = model.labels_
-
-    n_clusters_ = model.n_clusters_
-  
-  colors = cycle('bgrcmykbgrcmykbgrcmykbgrcmyk')
-  for k, col in zip(range(n_clusters_), colors):
-      class_members = labels == k
-      plt.scatter(X[class_members, 0], X[class_members, 1], s=200, c=col)
-      # plt.plot(X[class_members, 0], X[class_members, 1], col + '.')
-
-  plt.title('Estimated number of clusters: %d' % n_clusters_)
-  plt.show()
-
-  return model.labels_, n_clusters_
-
-def clusteringMeanShift(X):
-  best_band = 0
-  best_sil = 0
-  quant = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-  for i in quant:
-    bandwidth = estimate_bandwidth(X, quantile=i) # Manually set the quantile to get num clusters = 3
-
-    model = MeanShift(bandwidth=bandwidth).fit(X)
+    model = MeanShift(bandwidth=best_band, bin_seeding=True).fit(X)
     labels = model.labels_
     cluster_centers = model.cluster_centers_
 
     labels_unique = np.unique(labels)
     n_clusters_ = len(labels_unique)
-
-    if len(set(labels)) <= 1: continue
-    sil = calinski_harabasz_score(X, labels)
-    # sil = silhouette_score(X, labels, metric='sqeuclidean')
-    if sil > best_sil:
-      best_sil = sil
-      best_band = bandwidth
-
-  model = MeanShift(bandwidth=best_band, bin_seeding=True).fit(X)
-  labels = model.labels_
-  cluster_centers = model.cluster_centers_
-
-  labels_unique = np.unique(labels)
-  n_clusters_ = len(labels_unique)
-
-  print('Estimated number of clusters: %d' % n_clusters_)
-  
-  colors = cycle('bgrcmykbgrcmykbgrcmykbgrcmyk')
-  for k, col in zip(range(n_clusters_), colors):
-      class_members = labels == k
-      plt.scatter(X[class_members, 0], X[class_members, 1], s=200, c=col)
-      # plt.plot(X[class_members, 0], X[class_members, 1], col + '.')
-
-  plt.title('Estimated number of clusters: %d' % n_clusters_)
-  plt.show()
-
-  return model.labels_, n_clusters_
-
-def clusteringSpectralClustering(X, n_c):
-  best_n_clusters = 0
-  best_sil = 0
-  if n_c == 0:
-    for i in range(1,11):
-      model = SpectralClustering(n_clusters=i, random_state=0).fit(X)
-      labels = model.labels_
-
-      labels_unique = np.unique(labels)
-      n_clusters_ = len(labels_unique)
-
-      if len(set(labels)) <= 1: continue
-      sil = calinski_harabasz_score(X, labels)
-      # sil = silhouette_score(X, labels, metric='sqeuclidean')
-      if sil > best_sil:
-        best_sil = sil
-        best_n_clusters = i
-
-    model = SpectralClustering(n_clusters=best_n_clusters, random_state=0).fit(X)
-    labels = model.labels_
-
-    labels_unique = np.unique(labels)
-    n_clusters_ = len(labels_unique)
-
-    print('Estimated number of clusters: %d' % n_clusters_)
-  else:
-    model = SpectralClustering(n_clusters=n_c, random_state=0).fit(X)
-    labels = model.labels_
-    labels_unique = np.unique(labels)
-    n_clusters_ = len(labels_unique)
-  
-  colors = cycle('bgrcmykbgrcmykbgrcmykbgrcmyk')
-  for k, col in zip(range(n_clusters_), colors):
-      class_members = labels == k
-      plt.scatter(X[class_members, 0], X[class_members, 1], s=200, c=col)
-      # plt.plot(X[class_members, 0], X[class_members, 1], col + '.')
-
-  plt.title('Estimated number of clusters: %d' % n_clusters_)
-  plt.show()
-
-  return model.labels_, n_clusters_
-
-def clusteringBirch(X, n_c):
-  best_n_clusters = 0
-  best_sil = 0
-  if n_c == 0:
-    for i in range(1,11):
-      model = Birch(n_clusters = i).fit(X)
-      labels = model.labels_
-
-      labels_unique = np.unique(labels)
-      n_clusters_ = len(labels_unique)
-
-      if len(set(labels)) <= 1: continue
-      sil = calinski_harabasz_score(X, labels)
-      # sil = silhouette_score(X, labels, metric='sqeuclidean')
-      if sil > best_sil:
-        best_sil = sil
-        best_n_clusters = i
-
-    model = Birch(n_clusters = best_n_clusters).fit(X)
-    labels = model.labels_
-
-    labels_unique = np.unique(labels)
-    n_clusters_ = len(labels_unique)
-
-    print('Estimated number of clusters: %d' % n_clusters_)
-  else:
-    model = Birch(n_clusters = n_c).fit(X)
-    labels = model.labels_
-    labels_unique = np.unique(labels)
-    n_clusters_ = len(labels_unique)
-
-  colors = cycle('bgrcmykbgrcmykbgrcmykbgrcmyk')
-  for k, col in zip(range(n_clusters_), colors):
-      class_members = labels == k
-      plt.scatter(X[class_members, 0], X[class_members, 1], s=200, c=col)
-      # plt.plot(X[class_members, 0], X[class_members, 1], col + '.')
-
-  plt.title('Estimated number of clusters: %d' % n_clusters_)
-  plt.show()
-
-  return model.labels_, n_clusters_
-
-def caim(df, target):
-  caim = CAIMD()
-  caim.fit(df, target)
-
-  print("\nCaim splited scheme: ")
-  print(caim.split_scheme)
-  print()
-
-  return caim.split_scheme
-
-def clustersAtrGenerate(labels, splited_sheme, type, n_clusters_kl):
-  cluster_x_atr = {}
-  for num_cluster in range(len(unique(labels))):
-    cluster_x_atr[num_cluster] = []
-  for i, fx in enumerate(splited_sheme):
-    zone = []
-    res = list(zip(splited_sheme[fx], splited_sheme[fx][1:] + splited_sheme[fx][:1]))
-    res.pop()
-    # # print(res)
-    # # if type == 1 or type == 5 or type == 6:
-    # if type == 99:
-    #   for j, zones in enumerate(res):
-    #     if (j+1) >= n_clusters_kl:
-    #       cluster_x_atr[0].append(zones)
-    #       continue  
-    #     cluster_x_atr[j+1].append(zones)
-    # else: 
-    for j, zones in enumerate(res):
-      cluster_x_atr[j].append(zones)
-  print("Range of values ​​by clusters obtained by the CAIM method")
-  print(cluster_x_atr)
-  print("\n")
-  return cluster_x_atr
-
-def calc_perc(labels, df, cluster_x_atr):
-  cluster = []
-  for i, num_cluster in enumerate(range(len(unique(labels)))):
-    number_entries = len(df[df['target'] == num_cluster])
-    perc = []
-    print("cluster %s" % i)
-    if number_entries < 1: continue
-
-    #columns
-    for l, entry in enumerate(df):
-      if entry == 'target': continue
-      #lines
-      count = 0
-      k = 0
-      for j, cl in enumerate(range(len(unique(labels)))):
-        max = 0
-        for row in df[df['target'] == num_cluster][entry]:
-          if row >= cluster_x_atr[j][l][0] and \
-          row <= cluster_x_atr[j][l][1]:
-            max += 1
-        
-        if max > count:
-          count = max
-          k = j
-      perc.append([round((count/number_entries)*100), cluster_x_atr[k][l], 
-                  number_entries, number_entries-count])
-      print(perc[l][0], perc[l][1], perc[l][2], perc[l][3])
-    cluster.append(perc)
-  print("Accuracy of each attribute in each cluster")
-  print(cluster)
-  print()
-  return cluster
-
-def standard_method(perc_atr_by_cluster, names):
-  #standard
-  print("Labels by Standard Method: ")
-  list_label_standard = []
-  for i, v1 in enumerate(perc_atr_by_cluster):
-    print('Cluster %s' % i)
-    rot = ""
-    base = 0
-    j = 1
-    params = ["Attribute name", "Accuracy", "Interval", "Number of elements", \
-              "Erro"] 
-    rot_dict = dict.fromkeys(params, None)
-
-    for porc_interval, name in zip(v1, names):
-      if porc_interval[0] >= base:
-        rot_dict["Attribute name"] = name
-        rot_dict["Accuracy"] = porc_interval[0]
-        rot_dict["Interval"] = porc_interval[1]
-        rot_dict["Number of elements"] = porc_interval[2]
-        rot_dict["Erro"] = porc_interval[3]
-        rot = "(Attribute name: " +name + \
-              " Interval: "+str(porc_interval[1]) + ")"
-        if j <= len(porc_interval):
-          rot += " - "
-        base = porc_interval[0]
+    if verbose:
+      print('Estimated number of clusters: %d' % n_clusters_)
     
-    print("Attribute name: " +rot_dict["Attribute name"] +", Accuracy: "+ \
-          str(rot_dict["Accuracy"])+"%,"+ " Interval: "+str(rot_dict["Interval"])+ \
-          ", Number of elements: " + str(rot_dict["Number of elements"]) + \
-          ", Erro: " + str(rot_dict["Erro"]))
-    list_label_standard.append(rot)
-  print("\n")
-  return list_label_standard
+      colors = cycle('bgrcmykbgrcmykbgrcmykbgrcmyk')
+      for k, col in zip(range(n_clusters_), colors):
+          class_members = labels == k
+          plt.scatter(X[class_members, 0], X[class_members, 1], s=200, c=col)
+          # plt.plot(X[class_members, 0], X[class_members, 1], col + '.')
 
-def alternative_method(perc_atr_by_cluster, names, var):
-  #alternative
-  print("Labels by Alternative Method: ")
-  list_label_alternative = []
-  for i, v1 in enumerate(perc_atr_by_cluster):
-    print('Cluster %s' % i)
-    base = 0
-    for porc_interval, name in zip(v1, names):
-      if porc_interval[0] >= base:
-        base = porc_interval[0]
-    rot = ""
-    j = 1
-    for porc_interval, name in zip(v1, names):
-      if porc_interval[0] >= (base-var):
-        print("Attribute name: " +name +", Accuracy: "+ str(porc_interval[0])+"%,"+\
-        " Interval: "+str(porc_interval[1])+ ", Number of elements: " \
-        + str(porc_interval[2]) + ", Erro: " + str(porc_interval[3]))
+      plt.title('Estimated number of clusters: %d' % n_clusters_)
+      plt.show()
+
+    return model.labels_, n_clusters_
+
+  def clusteringSpectralClustering(self, X, n_c, verbose):
+    best_n_clusters = 0
+    best_sil = 0
+    if n_c == 0:
+      for i in range(1,11):
+        model = SpectralClustering(n_clusters=i, random_state=0).fit(X)
+        labels = model.labels_
+
+        labels_unique = np.unique(labels)
+        n_clusters_ = len(labels_unique)
+
+        if len(set(labels)) <= 1: continue
+        sil = calinski_harabasz_score(X, labels)
+        # sil = silhouette_score(X, labels, metric='sqeuclidean')
+        if sil > best_sil:
+          best_sil = sil
+          best_n_clusters = i
+
+      model = SpectralClustering(n_clusters=best_n_clusters, random_state=0).fit(X)
+      labels = model.labels_
+
+      labels_unique = np.unique(labels)
+      n_clusters_ = len(labels_unique)
+      if verbose:
+        print('Estimated number of clusters: %d' % n_clusters_)
+    else:
+      model = SpectralClustering(n_clusters=n_c, random_state=0).fit(X)
+      labels = model.labels_
+      labels_unique = np.unique(labels)
+      n_clusters_ = len(labels_unique)
+    if verbose:
+      colors = cycle('bgrcmykbgrcmykbgrcmykbgrcmyk')
+      for k, col in zip(range(n_clusters_), colors):
+          class_members = labels == k
+          plt.scatter(X[class_members, 0], X[class_members, 1], s=200, c=col)
+          # plt.plot(X[class_members, 0], X[class_members, 1], col + '.')
+
+      plt.title('Estimated number of clusters: %d' % n_clusters_)
+      plt.show()
+
+    return model.labels_, n_clusters_
+
+  def clusteringBirch(self, X, n_c, verbose):
+    best_n_clusters = 0
+    best_sil = 0
+    if n_c == 0:
+      for i in range(1,11):
+        model = Birch(n_clusters = i).fit(X)
+        labels = model.labels_
+
+        labels_unique = np.unique(labels)
+        n_clusters_ = len(labels_unique)
+
+        if len(set(labels)) <= 1: continue
+        sil = calinski_harabasz_score(X, labels)
+        # sil = silhouette_score(X, labels, metric='sqeuclidean')
+        if sil > best_sil:
+          best_sil = sil
+          best_n_clusters = i
+
+      model = Birch(n_clusters = best_n_clusters).fit(X)
+      labels = model.labels_
+
+      labels_unique = np.unique(labels)
+      n_clusters_ = len(labels_unique)
+      if verbose:
+        print('Estimated number of clusters: %d' % n_clusters_)
+    else:
+      model = Birch(n_clusters = n_c).fit(X)
+      labels = model.labels_
+      labels_unique = np.unique(labels)
+      n_clusters_ = len(labels_unique)
+    if verbose:
+      colors = cycle('bgrcmykbgrcmykbgrcmykbgrcmyk')
+      for k, col in zip(range(n_clusters_), colors):
+          class_members = labels == k
+          plt.scatter(X[class_members, 0], X[class_members, 1], s=200, c=col)
+          # plt.plot(X[class_members, 0], X[class_members, 1], col + '.')
+
+      plt.title('Estimated number of clusters: %d' % n_clusters_)
+      plt.show()
+
+    return model.labels_, n_clusters_
+
+  def caim(self, df, target, verbose):
+    caim = CAIMD()
+    caim.fit(df, target)
+    if verbose:
+      print("\nCaim splited scheme: ")
+      print(caim.split_scheme)
+      print()
+
+    return caim.split_scheme
+
+  def clustersAtrGenerate(self, labels, splited_sheme, type, n_clusters_kl, verbose):
+    cluster_x_atr = {}
+    for num_cluster in range(len(unique(labels))):
+      cluster_x_atr[num_cluster] = []
+    for i, fx in enumerate(splited_sheme):
+      zone = []
+      res = list(zip(splited_sheme[fx], splited_sheme[fx][1:] + splited_sheme[fx][:1]))
+      res.pop()
+      # # print(res)
+      # # if type == 1 or type == 5 or type == 6:
+      # if type == 99:
+      #   for j, zones in enumerate(res):
+      #     if (j+1) >= n_clusters_kl:
+      #       cluster_x_atr[0].append(zones)
+      #       continue  
+      #     cluster_x_atr[j+1].append(zones)
+      # else: 
+      for j, zones in enumerate(res):
+        cluster_x_atr[j].append(zones)
+    if verbose:
+      print("Range of values ​​by clusters obtained by the CAIM method")
+      print(cluster_x_atr)
+      print("\n")
+    return cluster_x_atr
+
+  def calc_perc(self, labels, df, cluster_x_atr, verbose):
+    cluster = []
+    for i, num_cluster in enumerate(range(len(unique(labels)))):
+      number_entries = len(df[df['target'] == num_cluster])
+      perc = []
+      if verbose:
+        print("cluster %s" % i)
+      if number_entries < 1: continue
+
+      #columns
+      for l, entry in enumerate(df):
+        if entry == 'target': continue
+        #lines
+        count = 0
+        k = 0
+        for j, cl in enumerate(range(len(unique(labels)))):
+          max = 0
+          for row in df[df['target'] == num_cluster][entry]:
+            if row >= cluster_x_atr[j][l][0] and \
+            row <= cluster_x_atr[j][l][1]:
+              max += 1
+          
+          if max > count:
+            count = max
+            k = j
+        perc.append([round((count/number_entries)*100), cluster_x_atr[k][l], 
+                    number_entries, number_entries-count])
+        if verbose:
+          print(perc[l][0], perc[l][1], perc[l][2], perc[l][3])
+      cluster.append(perc)
+    return cluster
+
+  def standard_method(self, perc_atr_by_cluster, names, verbose):
+    #standard
+    if verbose:
+      print("Labels by Standard Method: ")
+    list_label_standard = []
+    for i, v1 in enumerate(perc_atr_by_cluster):
+      if verbose:
+        print('Cluster %s' % i)
+      rot = ""
+      base = 0
+      j = 1
+      params = ["Attribute name", "Accuracy", "Interval", "Number of elements", \
+                "Erro"] 
+      rot_dict = dict.fromkeys(params, None)
+
+      for porc_interval, name in zip(v1, names):
+        if porc_interval[0] >= base:
+          rot_dict["Attribute name"] = name
+          rot_dict["Accuracy"] = porc_interval[0]
+          rot_dict["Interval"] = porc_interval[1]
+          rot_dict["Number of elements"] = porc_interval[2]
+          rot_dict["Erro"] = porc_interval[3]
+          rot = "(Attribute name: " +name + \
+                " Interval: "+str(porc_interval[1]) + ")"
+          base = porc_interval[0]
+      if verbose:
+        print("Attribute name: " +rot_dict["Attribute name"] +", Accuracy: "+ \
+              str(rot_dict["Accuracy"])+"%,"+ " Interval: "+str(rot_dict["Interval"])+ \
+              ", Number of elements: " + str(rot_dict["Number of elements"]) + \
+              ", Erro: " + str(rot_dict["Erro"]))
+      list_label_standard.append(rot)
+    if verbose:
+      print("\n")
+    return list_label_standard
+
+  def alternative_method(self, perc_atr_by_cluster, names, var, verbose):
+    #alternative
+    if verbose:
+      print("Labels by Alternative Method: ")
+    list_label_alternative = []
+    for i, v1 in enumerate(perc_atr_by_cluster):
+      if verbose:
+        print('Cluster %s' % i)
+      base = 0.0
+      for porc_interval, name in zip(v1, names):
+        if porc_interval[0] >= base:
+          base = porc_interval[0]
+      rot = ""
+      j = 1
+      for porc_interval, name in zip(v1, names):
+        if porc_interval[0] >= (base-var):
+          if verbose:
+            print("Attribute name: " +name +", Accuracy: "+ str(porc_interval[0])+"%,"+\
+            " Interval: "+str(porc_interval[1])+ ", Number of elements: " \
+            + str(porc_interval[2]) + ", Erro: " + str(porc_interval[3]))
+          
+          rot += "(Attribute name: " +name + ", Interval: "+str(porc_interval[1]) + ")"
+
+          if j <= len(porc_interval):
+            rot += " - "
+            j+=1
+      list_label_alternative.append(rot)
+    if verbose:
+      print("\n")
+    return list_label_alternative
+
+  def result2df(self, df, list_label_standard, list_label_alternative):
+    stand = []
+    alter = []
+
+    for i, row in df.iterrows():
+      stand.append(list_label_standard[int(row["target"])]) 
+      alter.append(list_label_alternative[int(row["target"])])
+
+    df['label_CAIBAL_standard'] = stand
+    df['label_CAIBAL_alternative'] = alter
+
+    return df
+
+  def correct_labels(self, labels, labels_set):
+    corr_labels = []
+
+    for i, lb in enumerate(labels):
+      j = list(labels_set).index(lb)
+      corr_labels.append(j)
+
+    return corr_labels
+
+  def execute(
+        self, 
+        path=None, 
+        cluster_alg=1, 
+        discretization_type=1, 
+        var=0, 
+        n_clusters=0, 
+        prepro=False, 
+        is_sklearn_df=False, 
+        sklearn_df_name=None,
+        has_index_column=False,
+        index_column_name=None,
+        has_target=False, 
+        has_column_name=True,
+        verbose=False):
+    
+    if is_sklearn_df:
+      if sklearn_df_name == "iris":
+        sk = load_iris()
+      if sklearn_df_name == "wine":
+        sk = load_wine()
+      if sklearn_df_name == "cancer":
+        sk = load_breast_cancer()
         
-        rot = "(Attribute name: " +name + " Interval: "+str(porc_interval[1]) + ")"
+      names = sk.feature_names
+      X = sk.data
+      df = pd.DataFrame(X)
+    else:
+      if has_index_column:
+        df = pd.read_csv(path, index_col=index_column_name)
+      else:
+        df = pd.read_csv(path)
+        
+      if not has_column_name:
+        col_name = []
+        for i, _ in enumerate(df.columns):
+            col_name.append("Atr_"+str(i))
+        df.columns = col_name
+        
+      X = df.values
+      names = df.columns
+    
+    if has_target:
+        target = df.target
+        
+    if prepro:
+      df = self.preProcess(df)
+      # X = PCARedution(X)
 
-        if j <= len(porc_interval):
-          rot += " - "
-    list_label_alternative.append(rot)
-  print("\n")
-  return list_label_alternative
+    if cluster_alg == 1:
+      labels, n_clusters = self.clusteringKmeans(X, n_clusters, verbose)
 
-def result2df(df, list_label_standard, list_label_alternative):
-  stand = []
-  alter = []
+      splited_sheme = self.caim(df.values, labels, verbose)
+      df['target'] = labels
+      cluster_x_atr = self.clustersAtrGenerate(df.target, splited_sheme, cluster_alg, n_clusters, verbose)
+      if verbose:
+        print(cluster_x_atr)
 
-  for i, row in df.iterrows():
-    stand.append(list_label_standard[int(row["target"])]) 
-    alter.append(list_label_alternative[int(row["target"])])
+      if has_target == 1:
+        if verbose:
+          print("Accuracy:")
+          print(homogeneity_completeness_v_measure(target, df['target'], beta=1.0))
+          print("\n")
 
-  df['label_CAIBAL_standard'] = stand
-  df['label_CAIBAL_alternative'] = alter
+    elif cluster_alg == 2:
+      labels, n_clusters = self.clusteringAffinityPropagation(X, verbose)
+      splited_sheme = self.caim(df.values, labels, verbose)
+      df['target'] = labels
+      cluster_x_atr = self.clustersAtrGenerate(df.target, splited_sheme, cluster_alg, n_clusters, verbose)
+      if verbose:
+        print(cluster_x_atr)
 
-  return df
+      if verbose:
+        if has_target == 1:
+          print("Accuracy:")
+          print(homogeneity_completeness_v_measure(target, df['target'], beta=1.0))
+          print("\n")
+    
+    elif cluster_alg == 3:
+      labels, n_clusters = self.clusteringAgglomerativeClustering(X, n_clusters, verbose)
+      splited_sheme = self.caim(df.values, labels)
+      df['target'] = labels
+      cluster_x_atr = self.clustersAtrGenerate(df.target, splited_sheme, cluster_alg, n_clusters, verbose)
 
-def correct_labels(labels, labels_set):
-  corr_labels = []
+      if verbose:
+        print(cluster_x_atr)
+      if verbose:
+        if has_target == 1:
+          print("Accuracy:")
+          print(homogeneity_completeness_v_measure(target, df['target'], beta=1.0))
+          print("\n")
+    
+    elif cluster_alg == 4:
+      np.random.seed(0)
+      labels, n_clusters = self.clusteringMeanShift(X, verbose)
+      splited_sheme = self.caim(df.values, labels, verbose)
+      df['target'] = labels
+      cluster_x_atr = self.clustersAtrGenerate(df.target, splited_sheme, cluster_alg, n_clusters, verbose)
 
-  for i, lb in enumerate(labels):
-    j = list(labels_set).index(lb)
-    corr_labels.append(j)
+      if verbose:
+        print(cluster_x_atr)
 
-  return corr_labels
+      if verbose:
+        if has_target == 1:
+          print("Accuracy:")
+          print(homogeneity_completeness_v_measure(target, df['target'], beta=1.0))
+          print("\n")
+    
+    elif cluster_alg == 5:
+      np.random.seed(0)
+      labels, n_clusters = self.clusteringSpectralClustering(X, n_clusters, verbose)
+      splited_sheme = self.caim(df.values, labels, verbose)
+      df['target'] = labels
+      cluster_x_atr = self.clustersAtrGenerate(df.target, splited_sheme, cluster_alg, n_clusters, verbose)
+      
+      if verbose:
+        print(cluster_x_atr)
 
-def caibal(df, type_cluster, discretization_type, var, n_clusters, prepro, is_sklearn_df, has_target):
-  # X.data, X.target, X.feature_names
-  # caibal(X, cluster_alg, discretization_type, var, n_clusters, prepro, is_sklearn_df, has_target)
-  
-  if has_target:
-    target = df.target
+      if verbose:
+        if has_target == 1:
+          print("Accuracy:")
+          print(homogeneity_completeness_v_measure(target, df['target'], beta=1.0))
+          print("\n")
 
-  if is_sklearn_df:
-    names = df.feature_names
-    X = df.data
-    df = pd.DataFrame(X)
-  else:
-    X = df.values
-    names = df.columns
-   
-  if prepro:
-    df = preProcess(df)
-    # X = PCARedution(X)
+    perc_atr_by_cluster = self.calc_perc(labels, df, cluster_x_atr, verbose)
 
-  if type_cluster == 1:
-    # np.random.seed(0)
-    # if n_clusters == 0:
-    #   n_clusters = Elbow_kneeLocator(X)
-    labels, n_clusters = clusteringKmeans(X, n_clusters)
-
-    # print(target)
-    # print(labels)
-    # labels_set = df.target.unique()
-    # print(labels_set)
-    # # df['target'] = correct_labels(labels, labels_set)
-
-    # print(df['target'].values)
-    splited_sheme = caim(df.values, labels)
-    df['target'] = labels
-    cluster_x_atr = clustersAtrGenerate(df.target, splited_sheme, type_cluster, n_clusters)
-
-    print(cluster_x_atr)
-
-    if has_target == 1:
-      print("Accuracy:")
-      print(homogeneity_completeness_v_measure(target, df['target'], beta=1.0))
-      print("\n")
-
-  elif type_cluster == 2:
-    labels, n_clusters = clusteringAffinityPropagation(X)
-    splited_sheme = caim(df.values, labels)
-    df['target'] = labels
-    cluster_x_atr = clustersAtrGenerate(df.target, splited_sheme, type_cluster, n_clusters)
-
-    print(cluster_x_atr)
-
-    if has_target == 1:
-      print("Accuracy:")
-      print(homogeneity_completeness_v_measure(target, df['target'], beta=1.0))
-      print("\n")
-  
-  elif type_cluster == 3:
-    labels, n_clusters = clusteringAgglomerativeClustering(X, n_clusters)
-    splited_sheme = caim(df.values, labels)
-    df['target'] = labels
-    cluster_x_atr = clustersAtrGenerate(df.target, splited_sheme, type_cluster, n_clusters)
-
-    print(cluster_x_atr)
-
-    if has_target == 1:
-      print("Accuracy:")
-      print(homogeneity_completeness_v_measure(target, df['target'], beta=1.0))
-      print("\n")
-  
-  elif type_cluster == 4:
-    np.random.seed(0)
-    labels, n_clusters = clusteringMeanShift(X)
-    splited_sheme = caim(df.values, labels)
-    df['target'] = labels
-    cluster_x_atr = clustersAtrGenerate(df.target, splited_sheme, type_cluster, n_clusters)
-
-    print(cluster_x_atr)
-
-    if has_target == 1:
-      print("Accuracy:")
-      print(homogeneity_completeness_v_measure(target, df['target'], beta=1.0))
-      print("\n")
-  
-  elif type_cluster == 5:
-    np.random.seed(0)
-    labels, n_clusters = clusteringSpectralClustering(X, n_clusters)
-    splited_sheme = caim(df.values, labels)
-    df['target'] = labels
-    cluster_x_atr = clustersAtrGenerate(df.target, splited_sheme, type_cluster, n_clusters)
-
-    print(cluster_x_atr)
-
-    if has_target == 1:
-      print("Accuracy:")
-      print(homogeneity_completeness_v_measure(target, df['target'], beta=1.0))
-      print("\n")
-
-  perc_atr_by_cluster = calc_perc(labels, df, cluster_x_atr)
-
-  if discretization_type == 1:
-    result = standard_method(perc_atr_by_cluster, names)
-  else: 
-    result = alternative_method(perc_atr_by_cluster, names, var)
-  
-  # return result2df(df, list_label_standard, list_label_alternative)
-
-resp = int(input("Use external CSV file (1) or load sklearn datasets (2): "))
-is_sklearn_df = False
-if resp == 1:
-  has_target = int(input("This csv file has a target column?(1 - Yes, 0 - No): "))
-  path = input("Enter with the path file: ")
-  index = int(input("This csv file has a index columns?(1 - Yes, 0 - No):"))
-  if index:
-    index_col = input("Enter with the name of index column: ")
-    df = pd.read_csv(path, index_col=index)
-  else:
-    df = pd.read_csv(path)
-else:
-  has_target = 1
-  is_sklearn_df = True
-  print("1 - Iris\n2 - Wine\n3 - Breast Cancer")
-  resp = int(input("Select Dataset: "))
-  if resp == 1:
-    df = load_iris()
-  elif resp == 2:
-    df = load_wine()
-  else:
-    df = load_breast_cancer()
-  
-  # print(df.DESCR)
-
-print("1 - Kmeans\n2 - Affinity Propagation\n3 - Agglomerative Clustering\n\
-4 - Mean shift\n5 - Spectral Clustering")
-cluster_alg = int(input("Choice the clustering algorithm: "))
-n_clusters = 0
-if cluster_alg == 1 or cluster_alg == 3 or cluster_alg == 5:
-  auto_n_cluster = int(input("Desire set manually the number of clusters? (1 - Yes, 0 - No) "))
-  if auto_n_cluster == 1:
-    n_clusters = int(input("Enter with the number of clusters: "))
-
-discretization_type = int(input("1 - Pattern Method\n2 - Alternative Method: "))
-var = 0
-if discretization_type == 2:
-  var = int(input("Type the variance value: "))
-
-prepro = int(input("Wish standardize data? (1 - Yes, 0 - No) "))
-
-# DATAFRAME, CLUSTER TYPE, VAR. MIN, NUMBER OF CLUSTER, APPLY PREPROCESSING.
-caibal(df, cluster_alg, discretization_type, var, n_clusters, prepro, is_sklearn_df, has_target)
-
-#df = pd.read_csv('/content/seedsData_original.csv')
-#df
-
+    if discretization_type == 1:
+      result = self.standard_method(perc_atr_by_cluster, names, verbose)
+    else: 
+      result = self.alternative_method(perc_atr_by_cluster, names, var, verbose)
+    
+    # return result2df(df, list_label_standard, list_label_alternative)
+    return result
