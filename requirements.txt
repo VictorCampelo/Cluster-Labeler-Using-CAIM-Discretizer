@@ -74,7 +74,7 @@ mysql-connector-python==8.0.21
 mysqlclient==2.0.1
 nbconvert==5.6.1
 nbformat==5.0.6
-notebook==6.1.1
+notebook==6.1.5
 npyscreen==4.10.5
 numpy==1.19.2
 ordered-set==4.0.2
