@@ -5,7 +5,7 @@ attrs==20.2.0
 backcall==0.2.0
 bcrypt==3.2.0
 beautifulsoup4==4.9.1
-bleach==3.1.5
+bleach==3.3.0
 bs4==0.0.1
 btrfsutil==1.2.0
 CacheControl==0.12.6
